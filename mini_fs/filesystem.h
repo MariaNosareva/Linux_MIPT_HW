@@ -8,6 +8,9 @@
 #include <memory.h>
 #include "superblock.h"
 
-void* initialize();
+void* allocate_memory();
+void close(void*);
+struct superblock* open_filesystem(void*, char*);
+struct superblock* initialize(void*);
 
 #endif //MINI_FS_FILESYSTEM_H

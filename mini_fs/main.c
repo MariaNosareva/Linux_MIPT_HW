@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <memory.h>
+#include <stdint.h>
+#include "inode.h"
+#include "block.h"
 
 #define MAX_FILENAME_LENGTH 255
 #define MAX_COMMAND_LENGTH 255
@@ -14,6 +17,8 @@ int main() {
 
   char command[MAX_COMMAND_LENGTH];
   char filename[MAX_FILENAME_LENGTH];
+
+  printf("%d\n", sizeof(union block));
 
   while (strcmp(command, "quit") != 0) {
     printf(" >>>  ");

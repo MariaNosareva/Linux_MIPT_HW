@@ -9,11 +9,11 @@
 #include "fs_constants.h"
 
 struct inode {
-  char* name; // FILENAME_LENGTH
-  uint8_t is_directory;
-  uint8_t* inodes_indices_in_directory; // INODES_NUM_IN_DIRECTORY
+  char name[12]; // FILENAME_LENGTH
   uint32_t size_of_file;
-  uint8_t* data_blocks; // POINTERS_PER_INODE
+  uint8_t is_directory;
+  uint8_t inodes_indices_in_directory[8];
+  uint8_t data_blocks[4];
   uint8_t additional_blocks_index;
 };
 

@@ -6,7 +6,10 @@
 #define MINI_FS_FILESYSTEM_H
 
 #include <memory.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include "superblock.h"
+#include "block.h"
 
 void* allocate_memory();
 void close(void*);

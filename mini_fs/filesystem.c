@@ -2,10 +2,7 @@
 // Created by maria on 11.10.18.
 //
 
-#include <stdlib.h>
-#include <stdio.h>
 #include "filesystem.h"
-#include "block.h"
 
 void* allocate_memory() {
   void* filesystem = calloc(TOTAL_NUM_OF_BLOCKS + 1, sizeof(union block));
@@ -28,7 +25,7 @@ struct superblock* open_filesystem(void* filesystem, char* filename) {
   fread(superblock, sizeof(superblock), 1, filesystem_by_filename);
   fclose(filesystem_by_filename);
   return superblock;
-  
+
 }
 
 struct superblock* initialize(void* filesystem) {
@@ -43,5 +40,6 @@ struct superblock* initialize(void* filesystem) {
   struct inode* root_inode = (struct inode*) ((union block*) filesystem + 1);
   root_inode->name[0] = '/';
   root_inode->is_directory = 1;
+  root_inode->index_of_parent_inode = 0;
 
 }

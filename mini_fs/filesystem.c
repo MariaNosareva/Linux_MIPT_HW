@@ -36,10 +36,36 @@ struct superblock* initialize(void* filesystem) {
   superblock->free_inodes_count = NUM_BLOCKS_FOR_INODES * INODES_PER_BLOCK;
   superblock->blocks_for_inodes_count = NUM_BLOCKS_FOR_INODES;
   superblock->blocks_count = TOTAL_NUM_OF_BLOCKS;
+  superblock->inode_bitmap = 1;
 
   struct inode* root_inode = (struct inode*) ((union block*) filesystem + 1);
   root_inode->name[0] = '/';
   root_inode->is_directory = 1;
   root_inode->index_of_parent_inode = 0;
 
+}
+
+void add_directory(void* filesystem, struct superblock* superblock, uint8_t index_of_parent, char* name) {
+
+  int free_inode_index = find_free_inode_index(superblock);
+  if (free_inode_index == -1) {
+    printf("Unable to locate directory\n");
+    return;
+  }
+  superblock->inode_bitmap = (superblock->inode_bitmap | (1 << free_inode_index));
+
+  struct inode* free_inode = (struct inode*) ((union block*) filesystem + 1) + free_inode_index;
+  free_inode->index_of_parent_inode = index_of_parent;
+  free_inode->is_directory = 1;
+
+  memset(free_inode->name, 0, FILENAME_LENGTH);
+  strcpy(free_inode->name, name);
+
+  struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + index_of_parent;
+  insert_inode_into_directory(parent_inode, free_inode_index);
+
+}
+
+void mkdir(void* filesystem, struct superblock* superblock, char* name, uint8_t current_directory_inode) {
+  add_directory(filesystem, superblock, current_directory_inode, name);
 }

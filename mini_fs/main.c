@@ -41,6 +41,10 @@ int main() {
       // code
     } else if (strcmp(command, "rmdir") == 0) {
       rmdir(filesystem, current_directory, filename);
+    } else if (strcmp(command, "ls") == 0) {
+      ls(filesystem, current_directory, filename);
+    } else if (strcmp(command, "cd") == 0) {
+
     }
   }
 

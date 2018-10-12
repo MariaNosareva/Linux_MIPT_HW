@@ -126,3 +126,21 @@ void rmdir(void* filesystem, uint8_t parent_index, char* name) {
   remove_directory(filesystem, superblock, parent_index, inode_index);
 
 }
+
+void ls(void* filesystem, uint8_t parent_index, char* name) {
+  if (strcmp(name, ".")) {
+    int index = find_inode_index_by_name(filesystem, parent_index, name);
+    if (index == -1) {
+      printf("No such directory\n");
+      return;
+    }
+    parent_index = (uint8_t) index;
+  }
+  struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + parent_index;
+
+  for (int i = 0; i < parent_inode->current_num_of_files_in_directory; i++) {
+    uint8_t inner_inode_index = parent_inode->inodes_indices_in_directory[i];
+    struct inode* inner_inode = (struct inode*) ((union block*) filesystem + 1) + inner_inode_index;
+    printf("%s\n", inner_inode->name);
+  }
+}

@@ -98,6 +98,8 @@ void remove_directory(void* filesystem, struct superblock* superblock, uint8_t i
   struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + index_of_parent;
   remove_inode_from_directory(parent_inode, inode_index);
 
+  superblock->inode_bitmap = (superblock->inode_bitmap & ~(1 << inode_index));
+  superblock->free_inodes_count++;
 }
 
 int find_inode_index_by_name(void* filesystem, uint8_t parent_index, char* name) {
@@ -169,5 +171,38 @@ void cd(void* filesystem, uint8_t* current_directory, char* name) {
     return;
   }
 
+  struct inode* inode = (struct inode*) ((union block*) filesystem + 1) + index;
+  if (inode->is_directory) {
+    printf("%s is not a directory\n");
+    return;
+  }
+
   (*current_directory) = (uint8_t) index;
+}
+
+void touch(void* filesystem, struct superblock* superblock, uint8_t parent_index, char* name) {
+  int free_inode_index = find_free_inode_index(superblock);
+  if (free_inode_index == -1) {
+    printf("Unable to locate file\n");
+    return;
+  }
+
+  struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + parent_index;
+
+  if (insert_inode_into_directory(parent_inode, (uint8_t) free_inode_index) == -1) {
+    printf("Unable to locate file\n");
+    return;
+  }
+
+  superblock->inode_bitmap = (superblock->inode_bitmap | (1 << free_inode_index));
+  superblock->free_inodes_count--;
+
+  struct inode* free_inode = (struct inode*) ((union block*) filesystem + 1) + free_inode_index;
+  free_inode->index_of_parent_inode = parent_index;
+  free_inode->is_directory = 0;
+  free_inode->size_of_file = 0;
+
+  memset(free_inode->name, 0, FILENAME_LENGTH);
+  strcpy(free_inode->name, name);
+
 }

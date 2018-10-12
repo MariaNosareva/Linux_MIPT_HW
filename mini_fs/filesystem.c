@@ -136,6 +136,12 @@ void ls(void* filesystem, uint8_t parent_index, char* name) {
     }
     parent_index = (uint8_t) index;
   }
+
+  if (!strcmp(name, "..")) {
+    struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + parent_index;
+    parent_index = parent_inode->index_of_parent_inode;
+  }
+
   struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + parent_index;
 
   for (int i = 0; i < parent_inode->current_num_of_files_in_directory; i++) {
@@ -143,4 +149,25 @@ void ls(void* filesystem, uint8_t parent_index, char* name) {
     struct inode* inner_inode = (struct inode*) ((union block*) filesystem + 1) + inner_inode_index;
     printf("%s\n", inner_inode->name);
   }
+}
+
+void cd(void* filesystem, uint8_t* current_directory, char* name) {
+
+  if (!strcmp(name, ".")) {
+    return;
+  }
+
+  if (!strcmp(name, "..")) {
+    struct inode* current_inode = (struct inode*) ((union block*) filesystem + 1) + *current_directory;
+    (*current_directory) = current_inode->index_of_parent_inode;
+    return;
+  }
+
+  int index = find_inode_index_by_name(filesystem, *current_directory, name);
+  if (index == -1) {
+    printf("No such directory\n");
+    return;
+  }
+
+  (*current_directory) = (uint8_t) index;
 }

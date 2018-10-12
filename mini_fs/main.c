@@ -44,7 +44,7 @@ int main() {
     } else if (strcmp(command, "ls") == 0) {
       ls(filesystem, current_directory, filename);
     } else if (strcmp(command, "cd") == 0) {
-
+      cd(filesystem, &current_directory, filename);
     }
   }
 

@@ -6,13 +6,19 @@
 #include "block.h"
 #include "filesystem.h"
 
-#define MAX_FILENAME_LENGTH 255
 #define MAX_COMMAND_LENGTH 255
 
 int main() {
 
+//  char arr[5] = "abc";
+//  char* arr2 = calloc(10);
+//  arr2[0] = 'a';
+//  arr2[1] = 'b';
+//  arr2[2] = 'c';
+//  printf("%d\n", strcmp((char*)arr, arr2));
   void* filesystem = allocate_memory();
-  struct superblock* superblock = initialize(filesystem);
+  initialize(filesystem);
+  struct superblock* superblock = (struct superblock*) filesystem;
   uint8_t current_directory = superblock->root_inode_index;
 //  int fd = open("files", O_RDWR);
 //  if (fd == -1) {
@@ -21,21 +27,20 @@ int main() {
 //  }
 
   char command[MAX_COMMAND_LENGTH];
-  char filename[MAX_FILENAME_LENGTH];
+  char filename[FILENAME_LENGTH];
 
   while (strcmp(command, "quit") != 0) {
     printf(" >>>  ");
-    scanf("%s %s", command, filename); // TODO get filename char-by-char
+    scanf("%s %s", command, filename);
 
-    printf("%s", filename);
     if (strcmp(command, "touch") == 0) {
       // code
     } else if (strcmp(command, "mkdir") == 0) {
       mkdir(filesystem, superblock, filename, current_directory);
     } else if (strcmp(command, "fremove") == 0) {
       // code
-    } else if (strcmp(command, "dremove") == 0) {
-      // code
+    } else if (strcmp(command, "rmdir") == 0) {
+      rmdir(filesystem, current_directory, filename);
     }
   }
 

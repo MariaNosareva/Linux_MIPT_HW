@@ -21,6 +21,7 @@ struct inode {
   uint8_t index_of_parent_inode;
 };
 
-void insert_inode_into_directory(struct inode*, uint8_t);
+int insert_inode_into_directory(struct inode*, uint8_t);
+int remove_inode_from_directory(struct inode*, uint8_t);
 
 #endif //MINI_FS_INODE_H

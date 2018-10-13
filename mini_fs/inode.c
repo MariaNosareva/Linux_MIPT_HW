@@ -2,6 +2,7 @@
 // Created by maria on 08.10.18.
 //
 
+#include <memory.h>
 #include "inode.h"
 
 int insert_inode_into_directory(struct inode* parent_inode, uint8_t inode_index) {
@@ -31,4 +32,6 @@ int remove_inode_from_directory(struct inode* parent_inode, uint8_t inode_index)
     parent_inode->inodes_indices_in_directory[i - 1] = parent_inode->inodes_indices_in_directory[i];
   }
   parent_inode->current_num_of_files_in_directory--;
+
 }
+

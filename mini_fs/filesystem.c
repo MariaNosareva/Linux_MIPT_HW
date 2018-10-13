@@ -5,8 +5,10 @@
 #include "filesystem.h"
 
 void* allocate_memory() {
+
   void* filesystem = calloc(TOTAL_NUM_OF_BLOCKS + 1, sizeof(union block));
   return filesystem;
+
 }
 
 void close(void* filesystem) {
@@ -100,6 +102,7 @@ void remove_directory(void* filesystem, struct superblock* superblock, uint8_t i
 
   superblock->inode_bitmap = (superblock->inode_bitmap & ~(1 << inode_index));
   superblock->free_inodes_count++;
+
 }
 
 int find_inode_index_by_name(void* filesystem, uint8_t parent_index, char* name) {
@@ -130,6 +133,7 @@ void rmdir(void* filesystem, uint8_t parent_index, char* name) {
 }
 
 void ls(void* filesystem, uint8_t parent_index, char* name) {
+
   if (strcmp(name, ".")) {
     int index = find_inode_index_by_name(filesystem, parent_index, name);
     if (index == -1) {
@@ -151,6 +155,7 @@ void ls(void* filesystem, uint8_t parent_index, char* name) {
     struct inode* inner_inode = (struct inode*) ((union block*) filesystem + 1) + inner_inode_index;
     printf("%s\n", inner_inode->name);
   }
+
 }
 
 void cd(void* filesystem, uint8_t* current_directory, char* name) {
@@ -178,9 +183,11 @@ void cd(void* filesystem, uint8_t* current_directory, char* name) {
   }
 
   (*current_directory) = (uint8_t) index;
+
 }
 
 void touch(void* filesystem, struct superblock* superblock, uint8_t parent_index, char* name) {
+
   int free_inode_index = find_free_inode_index(superblock);
   if (free_inode_index == -1) {
     printf("Unable to locate file\n");
@@ -204,5 +211,63 @@ void touch(void* filesystem, struct superblock* superblock, uint8_t parent_index
 
   memset(free_inode->name, 0, FILENAME_LENGTH);
   strcpy(free_inode->name, name);
+
+}
+
+uint8_t check_duplicated_names(void* filesystem, struct inode* parent_inode, char* name) {
+
+  for (int i = 0; i < parent_inode->current_num_of_files_in_directory; i++) {
+    uint8_t inner_index = parent_inode->inodes_indices_in_directory[i];
+    struct inode* inner_inode = (struct inode*) ((union block*) filesystem + 1) + inner_index;
+    if (!strcmp(inner_inode->name, name)) {
+      return 1;
+    }
+  }
+  return 0;
+
+}
+
+void import_file_from_local(void* filesystem, struct superblock* superblock, uint8_t parent_index, char* name) {
+
+  FILE* file = fopen(name, "r");
+  if (file == NULL) {
+    printf("No such file\n");
+    fclose(file);
+    return;
+  }
+
+  int free_inode_index = find_free_inode_index(superblock);
+  if (free_inode_index == -1) {
+    printf("Unable to locate directory\n");
+    fclose(file);
+    return;
+  }
+
+  int number_of_free_blocks = get_number_of_free_blocks(superblock);
+  char* buffer = malloc(sizeof(union block) * (number_of_free_blocks + 1));
+  int read_chars = (int) fread(buffer, sizeof(char), number_of_free_blocks * sizeof(union block), file);
+
+  int num_of_blocks_needed = (int) ceil((double) read_chars / sizeof(union block));
+  if ((int) ceil((num_of_blocks_needed - POINTERS_PER_INODE) / POINTERS_PER_BLOCK) + num_of_blocks_needed > number_of_free_blocks) {
+    printf("No enough space\n");
+    free(buffer);
+    fclose(file);
+    return;
+  }
+
+  struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + parent_index;
+  if (insert_inode_into_directory(parent_inode, free_inode_index) == -1) {
+    printf("Unable to locate file\n");
+    free(buffer);
+    fclose(file);
+    return;
+  }
+
+  struct inode* goal_inode = (struct inode*) ((union block*) filesystem + 1) + free_inode_index;
+  write_to_blocks(filesystem, superblock, buffer, goal_inode);
+
+}
+
+void write_to_blocks(void* filesystem, struct superblock* superblock, char* buffer, struct inode* goal_inode) {
 
 }

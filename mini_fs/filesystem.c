@@ -265,13 +265,13 @@ void import_file_from_local(void* filesystem, struct superblock* superblock, uin
     return;
   }
 
-  write_to_blocks(filesystem, superblock, buffer, goal_inode, read_chars, num_of_blocks_needed);
+  write_to_blocks(filesystem, superblock, buffer, goal_inode, num_of_blocks_needed);
   free(buffer);
   fclose(file);
 }
 
-void write_to_blocks(void* filesystem, struct superblock* superblock, char* buffer, struct inode* goal_inode,
-                     int buffer_length, int num_of_blocks_needed) {
+void write_to_blocks(void* filesystem, struct superblock* superblock, char* buffer,
+                     struct inode* goal_inode, int num_of_blocks_needed) {
   int position_in_buffer = 0;
 
   for (int i = 0; i < fmin(POINTERS_PER_INODE, num_of_blocks_needed); i++) {
@@ -280,12 +280,26 @@ void write_to_blocks(void* filesystem, struct superblock* superblock, char* buff
       printf("Unable to write block of data\n");
       return;
     }
+
+    superblock->blocks_bitmap[index / 64] = (superblock->blocks_bitmap[index / 64] | (1 << (index - (index / 64) * 64)));
+
     union block* block = (union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + index;
     goal_inode->data_blocks[i] = (uint8_t) index;
     memcpy(block, buffer + position_in_buffer, sizeof(union block));
-    position_in_buffer += sizeof(block);
+    position_in_buffer += sizeof(union block);
   }
 
+  if (num_of_blocks_needed > POINTERS_PER_INODE) {
+    int index = find_free_block_index(superblock);
+    if (index == -1) {
+      printf("Unable to write block of data\n");
+      return;
+    }
+    superblock->blocks_bitmap[index / 64] = (superblock->blocks_bitmap[index / 64] | (1 << (index - (index / 64) * 64)));
+    uint8_t* pointers = (uint8_t*) ((union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + index);
+
+    // TODO function for writing to one block
+  }
   // TODO
 }
 
@@ -313,6 +327,8 @@ void cat(void* filesystem, uint8_t parent_index, char* name) {
     memcpy(buffer, data_block, sizeof(union block));
     printf("%s", buffer);
   }
+
+  // TODO cat from additional blocks
   printf("\n");
   free(buffer);
 

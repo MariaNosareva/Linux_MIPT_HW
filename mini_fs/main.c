@@ -10,12 +10,6 @@
 
 int main() {
 
-//  char arr[5] = "abc";
-//  char* arr2 = calloc(10);
-//  arr2[0] = 'a';
-//  arr2[1] = 'b';
-//  arr2[2] = 'c';
-//  printf("%d\n", strcmp((char*)arr, arr2));
   void* filesystem = allocate_memory();
   initialize(filesystem);
   struct superblock* superblock = (struct superblock*) filesystem;
@@ -34,7 +28,7 @@ int main() {
     scanf("%s %s", command, filename);
 
     if (strcmp(command, "touch") == 0) {
-      // code
+      touch(filesystem, superblock, current_directory, filename);
     } else if (strcmp(command, "mkdir") == 0) {
       mkdir(filesystem, superblock, filename, current_directory);
     } else if (strcmp(command, "fremove") == 0) {
@@ -45,6 +39,10 @@ int main() {
       ls(filesystem, current_directory, filename);
     } else if (strcmp(command, "cd") == 0) {
       cd(filesystem, &current_directory, filename);
+    } else if (strcmp(command, "import") == 0) {
+      import_file_from_local(filesystem, superblock, current_directory, filename);
+    } else if (strcmp(command, "cat") == 0) {
+      cat(filesystem, current_directory, filename);
     }
   }
 

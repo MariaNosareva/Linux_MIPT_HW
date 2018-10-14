@@ -20,6 +20,6 @@ struct superblock {
 };
 
 int find_free_inode_index(struct superblock*);
-int get_number_of_free_blocks(struct superblock*);
+int find_free_block_index(struct superblock*);
 
 #endif //MINI_FS_SUPERBLOCK_H

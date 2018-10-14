@@ -178,7 +178,7 @@ void cd(void* filesystem, uint8_t* current_directory, char* name) {
 
   struct inode* inode = (struct inode*) ((union block*) filesystem + 1) + index;
   if (inode->is_directory) {
-    printf("%s is not a directory\n");
+    printf("%s is not a directory\n", name);
     return;
   }
 
@@ -229,10 +229,10 @@ uint8_t check_duplicated_names(void* filesystem, struct inode* parent_inode, cha
 
 void import_file_from_local(void* filesystem, struct superblock* superblock, uint8_t parent_index, char* name) {
 
-  FILE* file = fopen(name, "r");
+  // TODO edit
+  FILE* file = fopen("/home/maria/Dropbox/MIPT/prog/linux2018/Linux_MIPT_HW/mini_fs/test", "r");
   if (file == NULL) {
     printf("No such file\n");
-    fclose(file);
     return;
   }
 
@@ -242,8 +242,10 @@ void import_file_from_local(void* filesystem, struct superblock* superblock, uin
     fclose(file);
     return;
   }
+  struct inode* goal_inode = (struct inode*) ((union block*) filesystem + 1) + free_inode_index;
+  strcpy(goal_inode->name, name);
 
-  int number_of_free_blocks = get_number_of_free_blocks(superblock);
+  int number_of_free_blocks = superblock->free_blocks_count;
   char* buffer = malloc(sizeof(union block) * (number_of_free_blocks + 1));
   int read_chars = (int) fread(buffer, sizeof(char), number_of_free_blocks * sizeof(union block), file);
 
@@ -263,11 +265,55 @@ void import_file_from_local(void* filesystem, struct superblock* superblock, uin
     return;
   }
 
-  struct inode* goal_inode = (struct inode*) ((union block*) filesystem + 1) + free_inode_index;
-  write_to_blocks(filesystem, superblock, buffer, goal_inode);
-
+  write_to_blocks(filesystem, superblock, buffer, goal_inode, read_chars, num_of_blocks_needed);
+  free(buffer);
+  fclose(file);
 }
 
-void write_to_blocks(void* filesystem, struct superblock* superblock, char* buffer, struct inode* goal_inode) {
+void write_to_blocks(void* filesystem, struct superblock* superblock, char* buffer, struct inode* goal_inode,
+                     int buffer_length, int num_of_blocks_needed) {
+  int position_in_buffer = 0;
+
+  for (int i = 0; i < fmin(POINTERS_PER_INODE, num_of_blocks_needed); i++) {
+    int index = find_free_block_index(superblock);
+    if (index == -1) {
+      printf("Unable to write block of data\n");
+      return;
+    }
+    union block* block = (union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + index;
+    goal_inode->data_blocks[i] = (uint8_t) index;
+    memcpy(block, buffer + position_in_buffer, sizeof(union block));
+    position_in_buffer += sizeof(block);
+  }
+
+  // TODO
+}
+
+void cat(void* filesystem, uint8_t parent_index, char* name) {
+
+  int index = find_inode_index_by_name(filesystem, parent_index, name);
+  if (index == -1) {
+    printf("No such file\n");
+    return;
+  }
+
+  struct inode* goal_inode = (struct inode*) ((union block*) filesystem + 1) + index;
+  if (goal_inode->is_directory) {
+    printf("%s is a directory\n", name);
+    return;
+  }
+
+  char* buffer = malloc(sizeof(char) * sizeof(union block));
+
+  for (int i = 0; i < POINTERS_PER_INODE; i++) {
+    if (goal_inode->data_blocks[i] == 0) {
+      continue;
+    }
+    union block* data_block = (union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + goal_inode->data_blocks[i];
+    memcpy(buffer, data_block, sizeof(union block));
+    printf("%s", buffer);
+  }
+  printf("\n");
+  free(buffer);
 
 }

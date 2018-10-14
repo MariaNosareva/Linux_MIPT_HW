@@ -27,5 +27,8 @@ void cd(void*, uint8_t*, char*);
 uint8_t check_duplicated_names(void*, struct inode*, char*);
 void touch(void* filesystem, struct superblock*, uint8_t, char*);
 uint8_t check_duplicated_names(void*, struct inode*, char*);
+void import_file_from_local(void*, struct superblock*, uint8_t, char*);
+void write_to_blocks(void*, struct superblock*, char*, struct inode*, int, int);
+void cat(void*, uint8_t, char*);
 
 #endif //MINI_FS_FILESYSTEM_H

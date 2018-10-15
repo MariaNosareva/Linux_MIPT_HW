@@ -34,7 +34,7 @@ int find_free_block_index(struct superblock* superblock) {
 
   for (int i = 0; i < (TOTAL_NUM_OF_BLOCKS - NUM_BLOCKS_FOR_INODES) / 64; i++) {
     uint64_t bitmap = superblock->blocks_bitmap[i];
-    position = 0;
+    position = (i == 0)? 1 : 0;
     uint8_t free = 0;
 
     while (!free && position < 64) {
@@ -43,7 +43,7 @@ int find_free_block_index(struct superblock* superblock) {
     }
 
     if (free) {
-      position = position + i * 64;
+      position = position + i * 64 - 1;
       break;
     }
   }

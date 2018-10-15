@@ -19,7 +19,6 @@ int main() {
 //    perror("Error opening the device");
 //    return -1;
 //  }
-  printf("%d\n", sizeof(struct superblock));
   char command[MAX_COMMAND_LENGTH];
   char filename[FILENAME_LENGTH];
 

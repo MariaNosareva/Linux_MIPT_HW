@@ -347,7 +347,9 @@ void cat(void* filesystem, uint8_t parent_index, char* name) {
     uint8_t* pointers = (uint8_t*) ((union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + goal_inode->additional_blocks_index);
     int i = 0;
     while (pointers[i] != 0) {
-      // TODO
+      union block* data_block = (union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + pointers[i];
+      memcpy(buffer, data_block, sizeof(union block));
+      printf("%s", buffer);
       i++;
     }
   }
@@ -355,3 +357,4 @@ void cat(void* filesystem, uint8_t parent_index, char* name) {
   free(buffer);
 
 }
+

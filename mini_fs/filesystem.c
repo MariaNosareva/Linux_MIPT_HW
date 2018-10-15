@@ -264,6 +264,8 @@ void import_file_from_local(void* filesystem, struct superblock* superblock, uin
     fclose(file);
     return;
   }
+  superblock->inode_bitmap = (superblock->inode_bitmap | (1 << free_inode_index));
+  superblock->free_inodes_count--;
 
   write_to_blocks(filesystem, superblock, buffer, goal_inode, num_of_blocks_needed);
   free(buffer);
@@ -291,6 +293,7 @@ void write_to_blocks(void* filesystem, struct superblock* superblock, char* buff
     }
     goal_inode->additional_blocks_index = index;
     superblock->blocks_bitmap[index / 64] = (superblock->blocks_bitmap[index / 64] | (1 << (index - (index / 64) * 64)));
+    superblock->free_blocks_count--;
     uint8_t* pointers = (uint8_t*) ((union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + index);
 
     for (int i = 0; i < fmin(POINTERS_PER_BLOCK, num_of_blocks_needed - POINTERS_PER_INODE); i++) {
@@ -311,6 +314,7 @@ int write_to_block(void* filesystem, struct superblock* superblock, char* buffer
   }
 
   superblock->blocks_bitmap[index / 64] = (superblock->blocks_bitmap[index / 64] | (1 << (index - (index / 64) * 64)));
+  superblock->free_blocks_count--;
 
   union block* block = (union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + index;
   memcpy(block, buffer + *position_in_buffer, sizeof(union block));

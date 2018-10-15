@@ -75,6 +75,13 @@ void add_directory(void* filesystem, struct superblock* superblock, uint8_t inde
 }
 
 void mkdir(void* filesystem, struct superblock* superblock, char* name, uint8_t current_directory_inode) {
+
+  struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + current_directory_inode;
+  if (check_duplicated_names(filesystem, parent_inode, name)) {
+    printf("File already exists\n");
+    return;
+  }
+
   add_directory(filesystem, superblock, current_directory_inode, name);
 }
 
@@ -177,12 +184,12 @@ void cd(void* filesystem, uint8_t* current_directory, char* name) {
   }
 
   struct inode* inode = (struct inode*) ((union block*) filesystem + 1) + index;
-  if (inode->is_directory) {
+  if (!inode->is_directory) {
     printf("%s is not a directory\n", name);
     return;
   }
 
-  (*current_directory) = (uint8_t) index;
+  (*current_directory) = index;
 
 }
 
@@ -195,6 +202,10 @@ void touch(void* filesystem, struct superblock* superblock, uint8_t parent_index
   }
 
   struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + parent_index;
+  if (check_duplicated_names(filesystem, parent_inode, name)) {
+    printf("File already exists\n");
+    return;
+  }
 
   if (insert_inode_into_directory(parent_inode, (uint8_t) free_inode_index) == -1) {
     printf("Unable to locate file\n");
@@ -229,6 +240,12 @@ uint8_t check_duplicated_names(void* filesystem, struct inode* parent_inode, cha
 
 void import_file_from_local(void* filesystem, struct superblock* superblock, uint8_t parent_index, char* name) {
 
+  struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + parent_index;
+  if (check_duplicated_names(filesystem, parent_inode, name)) {
+    printf("File already exists\n");
+    return;
+  }
+
   // TODO edit
   FILE* file = fopen("/home/maria/Dropbox/MIPT/prog/linux2018/Linux_MIPT_HW/mini_fs/test", "r");
   if (file == NULL) {
@@ -257,7 +274,6 @@ void import_file_from_local(void* filesystem, struct superblock* superblock, uin
     return;
   }
 
-  struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + parent_index;
   if (insert_inode_into_directory(parent_inode, free_inode_index) == -1) {
     printf("Unable to locate file\n");
     free(buffer);
@@ -282,7 +298,7 @@ void write_to_blocks(void* filesystem, struct superblock* superblock, char* buff
       printf("Unable to write block of data\n");
       return;
     }
-    goal_inode->data_blocks[i] = (uint8_t) index;
+    goal_inode->data_blocks[i] = index;
   }
 
   if (num_of_blocks_needed > POINTERS_PER_INODE) {
@@ -302,7 +318,7 @@ void write_to_blocks(void* filesystem, struct superblock* superblock, char* buff
         printf("Unable to write block of data\n");
         return;
       }
-      pointers[i] = (uint8_t) index;
+      pointers[i] = index;
     }
   }
 }

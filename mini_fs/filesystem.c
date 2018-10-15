@@ -275,18 +275,12 @@ void write_to_blocks(void* filesystem, struct superblock* superblock, char* buff
   int position_in_buffer = 0;
 
   for (int i = 0; i < fmin(POINTERS_PER_INODE, num_of_blocks_needed); i++) {
-    int index = find_free_block_index(superblock);
+    int index = write_to_block(filesystem, superblock, buffer, &position_in_buffer);
     if (index == -1) {
       printf("Unable to write block of data\n");
       return;
     }
-
-    superblock->blocks_bitmap[index / 64] = (superblock->blocks_bitmap[index / 64] | (1 << (index - (index / 64) * 64)));
-
-    union block* block = (union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + index;
     goal_inode->data_blocks[i] = (uint8_t) index;
-    memcpy(block, buffer + position_in_buffer, sizeof(union block));
-    position_in_buffer += sizeof(union block);
   }
 
   if (num_of_blocks_needed > POINTERS_PER_INODE) {
@@ -295,12 +289,33 @@ void write_to_blocks(void* filesystem, struct superblock* superblock, char* buff
       printf("Unable to write block of data\n");
       return;
     }
+    goal_inode->additional_blocks_index = index;
     superblock->blocks_bitmap[index / 64] = (superblock->blocks_bitmap[index / 64] | (1 << (index - (index / 64) * 64)));
     uint8_t* pointers = (uint8_t*) ((union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + index);
 
-    // TODO function for writing to one block
+    for (int i = 0; i < fmin(POINTERS_PER_BLOCK, num_of_blocks_needed - POINTERS_PER_INODE); i++) {
+      int index = write_to_block(filesystem, superblock, buffer, &position_in_buffer);
+      if (index == -1) {
+        printf("Unable to write block of data\n");
+        return;
+      }
+      pointers[i] = (uint8_t) index;
+    }
   }
-  // TODO
+}
+
+int write_to_block(void* filesystem, struct superblock* superblock, char* buffer, int* position_in_buffer) {
+  int index = find_free_block_index(superblock);
+  if (index == -1) {
+    return index;
+  }
+
+  superblock->blocks_bitmap[index / 64] = (superblock->blocks_bitmap[index / 64] | (1 << (index - (index / 64) * 64)));
+
+  union block* block = (union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + index;
+  memcpy(block, buffer + *position_in_buffer, sizeof(union block));
+  *position_in_buffer += sizeof(union block);
+  return index;
 }
 
 void cat(void* filesystem, uint8_t parent_index, char* name) {
@@ -328,7 +343,14 @@ void cat(void* filesystem, uint8_t parent_index, char* name) {
     printf("%s", buffer);
   }
 
-  // TODO cat from additional blocks
+  if (goal_inode->additional_blocks_index != 0) {
+    uint8_t* pointers = (uint8_t*) ((union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + goal_inode->additional_blocks_index);
+    int i = 0;
+    while (pointers[i] != 0) {
+      // TODO
+      i++;
+    }
+  }
   printf("\n");
   free(buffer);
 

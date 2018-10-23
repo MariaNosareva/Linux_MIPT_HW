@@ -12,22 +12,38 @@ void* allocate_memory() {
 }
 
 void close(void* filesystem) {
+  save(filesystem);
   free(filesystem);
 }
 
-struct superblock* open_filesystem(void* filesystem, char* filename) {
+struct superblock* open_filesystem(void* filesystem) {
 
-  FILE* filesystem_by_filename = fopen(filename, "r+t");
+  char filesystem_name[16] = "filesystem_dump";
+  FILE* filesystem_by_filename = fopen(filesystem_name, "r+t");
 
   if (filesystem_by_filename == NULL) {
     return initialize(filesystem);
   }
 
+  fread(filesystem, sizeof(union block), TOTAL_NUM_OF_BLOCKS + 1, filesystem_by_filename);
   struct superblock* superblock = (struct superblock*) filesystem;
-  fread(superblock, sizeof(superblock), 1, filesystem_by_filename);
   fclose(filesystem_by_filename);
   return superblock;
 
+}
+
+void save(void* filesystem) {
+
+  char filesystem_name[16] = "filesystem_dump";
+  FILE* filesystem_by_filename = fopen(filesystem_name, "w+t");
+
+  if (filesystem_by_filename == NULL) {
+    printf("Unable to save filesystem\n");
+    return;
+  }
+
+  fwrite((char*) filesystem, sizeof(char), (TOTAL_NUM_OF_BLOCKS + 1) * sizeof(union block), filesystem_by_filename);
+  fclose(filesystem_by_filename);
 }
 
 struct superblock* initialize(void* filesystem) {
@@ -95,14 +111,11 @@ void remove_directory(void* filesystem, struct superblock* superblock, uint8_t i
     if (inner_inode->is_directory) {
       remove_directory(filesystem, superblock, inode_index, inner_inode_index);
     } else {
-      // TODO remove_file()
+      remove_file(filesystem, superblock, index_of_parent, inner_inode->name);
     }
   }
-  goal_inode->current_num_of_files_in_directory = 0;
-  memset(goal_inode->name, '\0', FILENAME_LENGTH - 1);
-  memset(goal_inode->inodes_indices_in_directory, 0, INODES_NUM_IN_DIRECTORY);
-  goal_inode->is_directory = 0;
-  goal_inode->index_of_parent_inode = 0;
+
+  memset(goal_inode, 0, sizeof(struct inode));
 
   struct inode* parent_inode = (struct inode*) ((union block*) filesystem + 1) + index_of_parent;
   remove_inode_from_directory(parent_inode, inode_index);
@@ -131,6 +144,12 @@ void rmdir(void* filesystem, uint8_t parent_index, char* name) {
   int inode_index = find_inode_index_by_name(filesystem, parent_index, name);
   if (inode_index == -1) {
     printf("No such directory\n");
+    return;
+  }
+
+  struct inode* goal_inode = (struct inode*) ((union block*) filesystem + 1) + inode_index;
+  if (!goal_inode->is_directory) {
+    printf("%s is not a directory\n", name);
     return;
   }
 
@@ -246,8 +265,7 @@ void import_file_from_local(void* filesystem, struct superblock* superblock, uin
     return;
   }
 
-  // TODO edit
-  FILE* file = fopen("/home/maria/Dropbox/MIPT/prog/linux2018/Linux_MIPT_HW/mini_fs/test", "r");
+  FILE* file = fopen(name, "r");
   if (file == NULL) {
     printf("No such file\n");
     return;
@@ -286,10 +304,12 @@ void import_file_from_local(void* filesystem, struct superblock* superblock, uin
   write_to_blocks(filesystem, superblock, buffer, goal_inode, num_of_blocks_needed);
   free(buffer);
   fclose(file);
+
 }
 
 void write_to_blocks(void* filesystem, struct superblock* superblock, char* buffer,
                      struct inode* goal_inode, int num_of_blocks_needed) {
+
   int position_in_buffer = 0;
 
   for (int i = 0; i < fmin(POINTERS_PER_INODE, num_of_blocks_needed); i++) {
@@ -298,6 +318,7 @@ void write_to_blocks(void* filesystem, struct superblock* superblock, char* buff
       printf("Unable to write block of data\n");
       return;
     }
+    goal_inode->size_of_file += sizeof(union block);
     goal_inode->data_blocks[i] = index;
   }
 
@@ -318,12 +339,14 @@ void write_to_blocks(void* filesystem, struct superblock* superblock, char* buff
         printf("Unable to write block of data\n");
         return;
       }
+      goal_inode->size_of_file += sizeof(union block);
       pointers[i] = index;
     }
   }
 }
 
 int write_to_block(void* filesystem, struct superblock* superblock, char* buffer, int* position_in_buffer) {
+
   int index = find_free_block_index(superblock);
   if (index == -1) {
     return index;
@@ -336,6 +359,7 @@ int write_to_block(void* filesystem, struct superblock* superblock, char* buffer
   memcpy(block, buffer + *position_in_buffer, sizeof(union block));
   *position_in_buffer += sizeof(union block);
   return index;
+
 }
 
 void cat(void* filesystem, uint8_t parent_index, char* name) {
@@ -378,3 +402,56 @@ void cat(void* filesystem, uint8_t parent_index, char* name) {
 
 }
 
+void remove_file(void* filesystem, struct superblock* superblock, uint8_t parent_index, char* name) {
+
+  int index = find_inode_index_by_name(filesystem, parent_index, name);
+  if (index == -1) {
+    printf("No such file\n");
+    return;
+  }
+  struct inode* goal_inode = (struct inode*) ((union block*) filesystem + 1) + index;
+
+  if (goal_inode->is_directory) {
+    printf("%s is not a file\n", name);
+    return;
+  }
+
+  free_blocks(filesystem, superblock, goal_inode);
+  memset(goal_inode, 0, sizeof(struct inode));
+  superblock->inode_bitmap = (superblock->inode_bitmap & ~(1 << index));
+  superblock->free_inodes_count++;
+
+}
+
+void free_blocks(void* filesystem, struct superblock* superblock, struct inode* goal_inode) {
+
+  for (int i = 0; i < POINTERS_PER_INODE; i++) {
+    if (goal_inode->data_blocks[i] == 0) {
+      continue;
+    }
+    int index = goal_inode->data_blocks[i];
+    union block* data_block = (union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + index;
+    memset(data_block, 0, sizeof(union block));
+    goal_inode->data_blocks[i] = 0;
+
+    superblock->blocks_bitmap[index / 64] = (superblock->blocks_bitmap[index / 64] & ~(1 << (index - (index / 64) * 64)));
+    superblock->free_blocks_count++;
+  }
+
+  if (goal_inode->additional_blocks_index != 0) {
+    uint8_t* pointers = (uint8_t*) ((union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + goal_inode->additional_blocks_index);
+    int i = 0;
+    while (pointers[i] != 0) {
+      int index = pointers[i];
+      union block* data_block = (union block*) filesystem + 1 + NUM_BLOCKS_FOR_INODES + pointers[i];
+      memset(data_block, 0, sizeof(union block));
+
+      superblock->blocks_bitmap[index / 64] = (superblock->blocks_bitmap[index / 64] & ~(1 << (index - (index / 64) * 64)));
+      superblock->free_blocks_count++;
+      pointers[i] = 0;
+      i++;
+    }
+    goal_inode->additional_blocks_index = 0;
+  }
+
+}

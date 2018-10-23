@@ -15,7 +15,7 @@
 
 void* allocate_memory();
 void close(void*);
-struct superblock* open_filesystem(void*, char*);
+struct superblock* open_filesystem(void*);
 struct superblock* initialize(void*);
 
 void add_directory(void*, struct superblock*, uint8_t, char*);
@@ -31,5 +31,7 @@ void import_file_from_local(void*, struct superblock*, uint8_t, char*);
 void write_to_blocks(void*, struct superblock*, char*, struct inode*, int);
 int write_to_block(void*, struct superblock*, char*, int*);
 void cat(void*, uint8_t, char*);
+void remove_file(void*, struct superblock*, uint8_t, char*);
+void free_blocks(void*, struct superblock*, struct inode*);
 
 #endif //MINI_FS_FILESYSTEM_H
